@@ -1,4 +1,4 @@
-package database
+package data
 
 import (
 	"fmt"
@@ -29,7 +29,7 @@ var dns = fmt.Sprintf(
 	"host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
 	config.host, config.port, config.user, config.dbname, config.password)
 
-func Init() error {
+func InitGorm() error {
 	DB, err := gorm.Open(postgres.Open(dns), &gorm.Config{})
 	if err != nil {
 		return err

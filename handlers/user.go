@@ -8,18 +8,16 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/speedrun-website/leaderboard-backend/database"
-	"github.com/speedrun-website/leaderboard-backend/middleware"
-	"github.com/speedrun-website/leaderboard-backend/model"
-	"github.com/speedrun-website/leaderboard-backend/utils"
+	"github.com/speedrun-website/leaderboard-backend/auth"
+	"github.com/speedrun-website/leaderboard-backend/data"
 )
 
 type UserIdentifierResponse struct {
-	User *model.UserIdentifier `json:"user"`
+	User *data.UserIdentifier `json:"user"`
 }
 
 type UserPersonalResponse struct {
-	User *model.UserPersonal `json:"user"`
+	User *data.UserPersonal `json:"user"`
 }
 
 func GetUser(c *gin.Context) {
@@ -32,11 +30,11 @@ func GetUser(c *gin.Context) {
 		return
 	}
 
-	user, err := database.Users.GetUserIdentifierById(id)
+	user, err := data.Users.GetUserIdentifierById(id)
 
 	if err != nil {
 		var code int
-		if errors.Is(err, database.UserNotFoundError{ID: id}) {
+		if errors.Is(err, data.UserNotFoundError{ID: id}) {
 			code = http.StatusNotFound
 		} else {
 			code = http.StatusInternalServerError
@@ -53,30 +51,37 @@ func GetUser(c *gin.Context) {
 	})
 }
 
+type RegisterUserRequest struct {
+	Username        string `json:"username" binding:"required"`
+	Email           string `json:"email" binding:"required,email"`
+	Password        string `json:"password" binding:"required,min=8"`
+	PasswordConfirm string `json:"password_confirm" binding:"eqfield=Password"`
+}
+
 func RegisterUser(c *gin.Context) {
-	var registerValue model.UserRegister
+	var registerValue RegisterUserRequest
 	if err := c.BindJSON(&registerValue); err != nil {
 		log.Println("Unable to bind value", err)
 		return
 	}
 
-	hash, err := utils.HashAndSalt([]byte(registerValue.Password))
+	hash, err := auth.HashAndSalt([]byte(registerValue.Password))
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	user := model.User{
+	user := data.User{
 		Username: registerValue.Username,
 		Email:    registerValue.Email,
 		Password: hash,
 	}
 
-	err = database.Users.CreateUser(user)
+	err = data.Users.CreateUser(user)
 
 	if err != nil {
-		if uniquenessErr, ok := err.(database.UserUniquenessError); ok {
+		if uniquenessErr, ok := err.(data.UserUniquenessError); ok {
 			/*
 			 * TODO: we probably don't want to reveal if an email is already in use.
 			 * Maybe just give a 201 and send an email saying that someone tried to sign up as you.
@@ -98,7 +103,7 @@ func RegisterUser(c *gin.Context) {
 
 	c.Header("Location", fmt.Sprintf("/api/v1/users/%d", user.ID))
 	c.JSON(http.StatusCreated, UserIdentifierResponse{
-		User: &model.UserIdentifier{
+		User: &data.UserIdentifier{
 			ID:       user.ID,
 			Username: user.Username,
 		},
@@ -106,11 +111,11 @@ func RegisterUser(c *gin.Context) {
 }
 
 func Me(c *gin.Context) {
-	rawUser, ok := c.Get(middleware.JwtConfig.IdentityKey)
+	rawUser, ok := c.Get(auth.JwtConfig.IdentityKey)
 	if ok {
-		user, ok := rawUser.(*model.UserPersonal)
+		user, ok := rawUser.(*data.UserPersonal)
 		if ok {
-			userInfo, err := database.Users.GetUserPersonalById(uint64(user.ID))
+			userInfo, err := data.Users.GetUserPersonalById(uint64(user.ID))
 
 			if err == nil {
 				c.JSON(http.StatusOK, UserPersonalResponse{

@@ -11,8 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/speedrun-website/leaderboard-backend/database"
-	"github.com/speedrun-website/leaderboard-backend/router"
+	"github.com/speedrun-website/leaderboard-backend/data"
 )
 
 func main() {
@@ -20,12 +19,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := database.Init(); err != nil {
+	if err := data.InitGorm(); err != nil {
 		log.Fatal(err)
 	}
 
 	r := gin.Default()
-	router.InitRoutes(r)
+	InitRoutes(r)
 	port := os.Getenv("BACKEND_PORT")
 	srv := &http.Server{
 		Addr:    ":" + port,

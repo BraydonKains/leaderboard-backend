@@ -1,17 +1,17 @@
-package router
+package main
 
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/speedrun-website/leaderboard-backend/auth"
 	"github.com/speedrun-website/leaderboard-backend/handlers"
-	"github.com/speedrun-website/leaderboard-backend/middleware"
 )
 
 func InitRoutes(router *gin.Engine) {
 	api := router.Group("/api/v1")
 
 	// the jwt middleware
-	var authMiddleware = middleware.GetGinJWTMiddleware()
+	var authMiddleware = auth.GetGinJWTMiddleware()
 
 	// public routes
 	api.POST("/register", handlers.RegisterUser)

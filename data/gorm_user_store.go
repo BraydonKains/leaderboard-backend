@@ -1,11 +1,10 @@
-package database
+package data
 
 import (
 	"errors"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
-	"github.com/speedrun-website/leaderboard-backend/model"
 	"gorm.io/gorm"
 )
 
@@ -13,27 +12,27 @@ type gormUserStore struct {
 	DB *gorm.DB
 }
 
-func (s gormUserStore) GetUserIdentifierById(userId uint64) (*model.UserIdentifier, error) {
-	var user model.UserIdentifier
-	err := s.DB.Model(&model.User{}).First(&user, userId).Error
+func (s gormUserStore) GetUserIdentifierById(userId uint64) (*UserIdentifier, error) {
+	var user UserIdentifier
+	err := s.DB.Model(&User{}).First(&user, userId).Error
 	if err != nil {
 		return nil, UserNotFoundError{ID: userId}
 	}
 	return &user, nil
 }
 
-func (s gormUserStore) GetUserPersonalById(userId uint64) (*model.UserPersonal, error) {
-	var user model.UserPersonal
-	err := s.DB.Model(&model.User{}).First(&user, userId).Error
+func (s gormUserStore) GetUserPersonalById(userId uint64) (*UserPersonal, error) {
+	var user UserPersonal
+	err := s.DB.Model(&User{}).First(&user, userId).Error
 	if err != nil {
 		return nil, UserNotFoundError{ID: userId}
 	}
 	return &user, nil
 }
 
-func (s gormUserStore) GetUserByEmail(email string) (*model.User, error) {
-	var user model.User
-	err := s.DB.Where(model.User{
+func (s gormUserStore) GetUserByEmail(email string) (*User, error) {
+	var user User
+	err := s.DB.Where(User{
 		Email: email,
 	}).First(&user).Error
 	if err != nil {
@@ -42,7 +41,7 @@ func (s gormUserStore) GetUserByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-func (s gormUserStore) CreateUser(user model.User) error {
+func (s gormUserStore) CreateUser(user User) error {
 	err := s.DB.Create(&user).Error
 
 	if err != nil {
@@ -64,7 +63,7 @@ func (s gormUserStore) CreateUser(user model.User) error {
 }
 
 func initGormUserStore(db *gorm.DB) error {
-	if err := db.AutoMigrate(&model.User{}); err != nil {
+	if err := db.AutoMigrate(&User{}); err != nil {
 		return err
 	}
 

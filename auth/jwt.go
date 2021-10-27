@@ -1,4 +1,4 @@
-package middleware
+package auth
 
 import (
 	"log"
@@ -7,10 +7,13 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/speedrun-website/leaderboard-backend/database"
-	"github.com/speedrun-website/leaderboard-backend/model"
-	"github.com/speedrun-website/leaderboard-backend/utils"
+	"github.com/speedrun-website/leaderboard-backend/data"
 )
+
+type UserLoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
 
 const identityKey = "id"
 
@@ -21,7 +24,7 @@ var JwtConfig = &jwt.GinJWTMiddleware{
 	MaxRefresh:  time.Hour,
 	IdentityKey: identityKey,
 	PayloadFunc: func(d interface{}) jwt.MapClaims {
-		if v, ok := d.(*model.UserPersonal); ok {
+		if v, ok := d.(*data.UserPersonal); ok {
 			return jwt.MapClaims{
 				identityKey: strconv.FormatUint(uint64(v.ID), 36),
 			}
@@ -31,12 +34,12 @@ var JwtConfig = &jwt.GinJWTMiddleware{
 	IdentityHandler: func(c *gin.Context) interface{} {
 		claims := jwt.ExtractClaims(c)
 		id, _ := strconv.ParseUint(claims[identityKey].(string), 36, 0)
-		return &model.UserPersonal{
+		return &data.UserPersonal{
 			ID: uint(id),
 		}
 	},
 	Authenticator: func(c *gin.Context) (interface{}, error) {
-		var loginVals model.UserLogin
+		var loginVals UserLoginRequest
 		if err := c.ShouldBindJSON(&loginVals); err != nil {
 			return nil, jwt.ErrMissingLoginValues
 		}
@@ -44,13 +47,13 @@ var JwtConfig = &jwt.GinJWTMiddleware{
 		email := loginVals.Email
 		password := loginVals.Password
 
-		user, err := database.Users.GetUserByEmail(email)
+		user, err := data.Users.GetUserByEmail(email)
 		if err != nil {
 			return nil, jwt.ErrFailedAuthentication
 		}
 
-		if utils.ComparePasswords(user.Password, []byte(password)) {
-			return &model.UserPersonal{
+		if ComparePasswords(user.Password, []byte(password)) {
+			return &data.UserPersonal{
 				ID:       user.ID,
 				Email:    user.Email,
 				Username: user.Username,

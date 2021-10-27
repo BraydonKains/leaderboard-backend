@@ -1,18 +1,36 @@
-package database
+package data
 
 import (
 	"fmt"
 
-	"github.com/speedrun-website/leaderboard-backend/model"
+	"gorm.io/gorm"
 )
 
 var Users UserStore
 
+type User struct {
+	gorm.Model
+	Username string `gorm:"unique"`
+	Email    string `gorm:"unique"`
+	Password string
+}
+
+type UserIdentifier struct {
+	ID       uint
+	Username string
+}
+
+type UserPersonal struct {
+	ID       uint
+	Username string
+	Email    string
+}
+
 type UserStore interface {
-	GetUserIdentifierById(uint64) (*model.UserIdentifier, error)
-	GetUserPersonalById(uint64) (*model.UserPersonal, error)
-	GetUserByEmail(string) (*model.User, error)
-	CreateUser(model.User) error
+	GetUserIdentifierById(uint64) (*UserIdentifier, error)
+	GetUserPersonalById(uint64) (*UserPersonal, error)
+	GetUserByEmail(string) (*User, error)
+	CreateUser(User) error
 }
 
 // Errors
@@ -32,7 +50,7 @@ func (e UserNotFoundError) Error() string {
 }
 
 type UserUniquenessError struct {
-	User       model.User
+	User       User
 	ErrorField string
 }
 
@@ -41,7 +59,7 @@ func (e UserUniquenessError) Error() string {
 }
 
 type UserCreationError struct {
-	User model.User
+	User User
 	Err  error
 }
 

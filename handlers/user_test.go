@@ -12,21 +12,20 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/speedrun-website/leaderboard-backend/database"
+	"github.com/speedrun-website/leaderboard-backend/data"
 	"github.com/speedrun-website/leaderboard-backend/handlers"
 	"github.com/speedrun-website/leaderboard-backend/middleware"
-	"github.com/speedrun-website/leaderboard-backend/model"
 )
 
 // Mock utilities
 
 type mockUserStore struct {
-	Users map[uint64]*model.User
+	Users map[uint64]*data.User
 }
 
 func setupMockUserStore() *mockUserStore {
 	store := mockUserStore{
-		Users: map[uint64]*model.User{
+		Users: map[uint64]*data.User{
 			1: {
 				Username: "RageCage",
 				Email:    "rage@cage.com",
@@ -41,27 +40,27 @@ func setupMockUserStore() *mockUserStore {
 			},
 		},
 	}
-	database.Users = &store
+	data.Users = &store
 	return &store
 }
 
-func (s mockUserStore) GetUserIdentifierById(userId uint64) (*model.UserIdentifier, error) {
+func (s mockUserStore) GetUserIdentifierById(userId uint64) (*data.UserIdentifier, error) {
 	for id, user := range s.Users {
 		if id == userId {
-			userIdentifier := model.UserIdentifier{
+			userIdentifier := data.UserIdentifier{
 				ID:       user.ID,
 				Username: user.Username,
 			}
 			return &userIdentifier, nil
 		}
 	}
-	return nil, database.UserNotFoundError{ID: userId}
+	return nil, data.UserNotFoundError{ID: userId}
 }
 
-func (s mockUserStore) GetUserPersonalById(userId uint64) (*model.UserPersonal, error) {
+func (s mockUserStore) GetUserPersonalById(userId uint64) (*data.UserPersonal, error) {
 	for id, user := range s.Users {
 		if id == userId {
-			userPersonal := model.UserPersonal{
+			userPersonal := data.UserPersonal{
 				ID:       user.ID,
 				Username: user.Username,
 				Email:    user.Email,
@@ -69,25 +68,25 @@ func (s mockUserStore) GetUserPersonalById(userId uint64) (*model.UserPersonal, 
 			return &userPersonal, nil
 		}
 	}
-	return nil, database.UserNotFoundError{ID: userId}
+	return nil, data.UserNotFoundError{ID: userId}
 }
 
-func (s mockUserStore) GetUserByEmail(email string) (*model.User, error) {
+func (s mockUserStore) GetUserByEmail(email string) (*data.User, error) {
 	return nil, errors.New("This method is unused in this file")
 }
 
-func (s mockUserStore) CreateUser(newUser model.User) error {
+func (s mockUserStore) CreateUser(newUser data.User) error {
 	var maxId uint64
 	maxId = 0
 	for id, user := range s.Users {
 		if user.Email == newUser.Email {
-			return database.UserUniquenessError{
+			return data.UserUniquenessError{
 				User:       newUser,
 				ErrorField: "email",
 			}
 		}
 		if user.Username == newUser.Username {
-			return database.UserUniquenessError{
+			return data.UserUniquenessError{
 				User:       newUser,
 				ErrorField: "username",
 			}
@@ -167,7 +166,7 @@ func TestGetUser200WithRealUser(t *testing.T) {
 }
 
 func TestRegisterUser400WithImproperRequestFormat(t *testing.T) {
-	database.Users = mockUserStore{}
+	data.Users = mockUserStore{}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = &http.Request{
@@ -185,13 +184,13 @@ func TestRegisterUser400WithImproperRequestFormat(t *testing.T) {
 }
 
 func TestRegisterUser400IfPasswordConfirmDoesNotMatch(t *testing.T) {
-	database.Users = mockUserStore{}
+	data.Users = mockUserStore{}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Request = &http.Request{
 		Header: make(http.Header),
 	}
-	registerBody := model.UserRegister{
+	registerBody := handlers.RegisterUserRequest{
 		Username:        "butterfingers",
 		Email:           "doesnot@matter.com",
 		Password:        "str0ngP4sswrd",
@@ -215,7 +214,7 @@ func TestRegisterUser409WithNonUniqueUsername(t *testing.T) {
 	c.Request = &http.Request{
 		Header: make(http.Header),
 	}
-	registerBody := model.UserRegister{
+	registerBody := handlers.RegisterUserRequest{
 		Username:        store.Users[1].Username,
 		Email:           "doesnot@matter.com",
 		Password:        "str0ngP4sswrd",
@@ -245,7 +244,7 @@ func TestRegisterUser409WithNonUniqueEmail(t *testing.T) {
 	c.Request = &http.Request{
 		Header: make(http.Header),
 	}
-	registerBody := model.UserRegister{
+	registerBody := handlers.RegisterUserRequest{
 		Username:        "somedude",
 		Email:           store.Users[1].Email,
 		Password:        "str0ngP4sswrd",
@@ -275,7 +274,7 @@ func TestRegisterUser201SatisfyingAllRequirements(t *testing.T) {
 	c.Request = &http.Request{
 		Header: make(http.Header),
 	}
-	registerBody := model.UserRegister{
+	registerBody := handlers.RegisterUserRequest{
 		Username:        "NewUser",
 		Email:           "new@email.com",
 		Password:        "str0ngP4sswrd",
@@ -332,7 +331,7 @@ func TestMe500WhenUserInJWTIsNotReal(t *testing.T) {
 	setupMockUserStore()
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Set(middleware.JwtConfig.IdentityKey, &model.UserPersonal{
+	c.Set(middleware.JwtConfig.IdentityKey, &data.UserPersonal{
 		ID: 69,
 	})
 
@@ -347,7 +346,7 @@ func TestMe200WhenUserInJWTIsReal(t *testing.T) {
 	setupMockUserStore()
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	c.Set(middleware.JwtConfig.IdentityKey, &model.UserPersonal{
+	c.Set(middleware.JwtConfig.IdentityKey, &data.UserPersonal{
 		ID: 1,
 	})
 
